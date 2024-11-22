@@ -156,9 +156,9 @@ class Ghost(threading.Thread):
 
 class Game:
     def __init__(self):
-        self.CELL_SIZE = 40
-        self.BOARD_WIDTH = 10
-        self.BOARD_HEIGHT = 10
+        self.CELL_SIZE = 20
+        self.BOARD_WIDTH = 28
+        self.BOARD_HEIGHT = 31
         self.SCREEN_WIDTH = self.BOARD_WIDTH * self.CELL_SIZE
         self.SCREEN_HEIGHT = self.BOARD_HEIGHT * self.CELL_SIZE + 50
 
@@ -168,14 +168,14 @@ class Game:
         self.clock = pygame.time.Clock()
 
         self.shared_state = SharedState()
-        self.player_pos = Position(5, 5)
+        self.player_pos = Position(x=12, y=23)
         self.player_direction = "right"
         self.ghosts = []
         self.board = self.create_board()
 
         ghost_info = [
-            (Position(1, 1), "chase"),
-            (Position(8, 8), "random")
+            (Position(14, 12), "chase"),
+            (Position(14, 15), "random")
         ]
         for i, (pos, personality) in enumerate(ghost_info):
             ghost = Ghost(self, i, pos, personality)
@@ -183,17 +183,39 @@ class Game:
 
     def create_board(self) -> List[List[str]]:
         layout = [
-            "WWWWWWWWWW",
-            "W........W",
-            "W.WWWWW..W",
-            "W.W....W.W",
-            "W.WWW..W.W",
-            "W....e.W.W",
-            "W.WWWWW.WW",
-            "W........W",
-            "W...e....W",
-            "WWWWWWWWWW"
-        ]
+    "WWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+    "W............WW............W",
+    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+    "WeWWWW.WWWWW.WW.WWWWW.WWWWeW",
+    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+    "W..........................W",
+    "W.WWWW.WW.WWWWWWWW.WW.WWWW.W",
+    "W.WWWW.WW.WWWWWWWW.WW.WWWW.W",
+    "W......WW....WW....WW......W",
+    "WWWWWW.WWWWW WW WWWWW.WWWWWW",
+    "WWWWWW.WWWWW WW WWWWW.WWWWWW",
+    "WWWWWW.WW          WW.WWWWWW",
+    "WWWWWW.WW WWW  WWW WW.WWWWWW",
+    "WWWWWW.WW W      W WW.WWWWWW",
+    "          W      W          ",
+    "WWWWWW.WW W      W WW.WWWWWW",
+    "WWWWWW.WW WWWWWWWW WW.WWWWWW",
+    "WWWWWW.WW          WW.WWWWWW",
+    "WWWWWW.WW WWWWWWWW WW.WWWWWW",
+    "WWWWWW.WW WWWWWWWW WW.WWWWWW",
+    "W............WW............W",
+    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+    "We..WW................WW..eW",
+    "WWW.WW.WW.WWWWWWWW.WW.WW.WWW",
+    "WWW.WW.WW.WWWWWWWW.WW.WW.WWW",
+    "W......WW....WW....WW......W",
+    "W.WWWWWWWWWW.WW.WWWWWWWWWW.W",
+    "W.WWWWWWWWWW.WW.WWWWWWWWWW.W",
+    "W..........................W",
+    "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+    ]
+    
 
         assert len(layout) == self.BOARD_HEIGHT
         assert all(len(row) == self.BOARD_WIDTH for row in layout)
