@@ -261,7 +261,7 @@ class Game:
                 elif cell == '.':
                     pygame.draw.circle(self.screen, (255, 255, 255), rect.center, 4)
                 elif cell == 'e':
-                    pygame.draw.circle(self.screen, (255, 255, 0), rect.center, 8)
+                    pygame.draw.circle(self.screen, (255, 0, 255), rect.center, 8)
 
         # Draw player
         pygame.draw.circle(self.screen, (255, 255, 0),
