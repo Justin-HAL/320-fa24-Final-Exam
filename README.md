@@ -9,12 +9,15 @@ This project implements a multithreaded version of the classic Pac-Man game usin
 Core Mechanics:
 
 Player-controlled Pac-Man collects dots and energizers.
+
 Ghosts with unique AI behaviors (chase, random).
+
 Power-ups allow Pac-Man to eat ghosts temporarily.
 
 📋 Requirements:
 
 Python 3.8+
+
 Pygame library (pip install pygame)
 
 🚀 How to Run:
@@ -23,7 +26,8 @@ Clone the repository:
 
 1. git clone https://github.com/Justin-HAL/320-fa24-Final-Exam
 cd 320-fa24-Final-Exam
-2. Run the game:
+
+3. Run the game:
 python main.py
 
 👥 Contributors:
