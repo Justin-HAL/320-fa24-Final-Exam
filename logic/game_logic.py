@@ -57,6 +57,7 @@ class Ghost(threading.Thread):
                 else:
                     return (1 if dx > 0 else -1 if dx < 0 else 0,
                            1 if dy > 0 else -1 if dy < 0 else 0)
+                
 
             player_x = self.game.player_pos.x
             player_y = self.game.player_pos.y
@@ -114,7 +115,9 @@ class Ghost(threading.Thread):
     def handle_collision(self) -> None:
         with self.game.shared_state.lock:
             if self.position.collides_with(self.game.player_pos):
+                print("ghost player collision")
                 if self.is_blue and not self.is_eaten:
+                    print("ghost eaten")
                     if self.game.shared_state.debug:
                         print(f"Ghost {self.ghost_id} eaten!")
                     self.is_eaten = True
@@ -245,6 +248,18 @@ class Game:
                                 if not ghost.is_eaten:
                                     ghost.is_blue = True
 
+                        for ghost in self.ghosts:
+                            if self.player_pos.collides_with(ghost.position):
+                                if self.shared_state.power_up_active and not ghost.is_eaten:
+                                    if self.shared_state.debug:
+                                        print(f"Player ate ghost {ghost.ghost_id}!")
+                                    ghost.is_eaten = True
+                                    ghost.is_blue = False
+                                    self.shared_state.score += 200
+                                elif not self.shared_state.power_up_active and not ghost.is_eaten:
+                                    if self.shared_state.debug:
+                                        print("Player caught by ghost!")
+                                    self.shared_state.game_over = True
             time.sleep(0.1)  # Prevent CPU hogging
 
     def render_frame(self):
