@@ -29,5 +29,7 @@ python main.py
 👥 Contributors:
 
 Ben Tran
+
 Daniel Leone
+
 Justin Halvorson
