@@ -6,6 +6,7 @@ from queue import Queue
 from dataclasses import dataclass
 from typing import List, Tuple
 import math
+import sys
 
 @dataclass
 class Position:
@@ -16,7 +17,6 @@ class Position:
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
         
     def collides_with(self, other: 'Position') -> bool:
-        # collision detection
         return math.fabs(self.x - other.x) < 0.8 and math.fabs(self.y - other.y) < 0.8
 
 class SharedState:
@@ -47,10 +47,10 @@ class Ghost(threading.Thread):
 
     def calculate_move(self) -> Tuple[int, int]:
         with self.game.shared_state.lock:
-            if self.is_eaten:  # Return to start if eaten
+            if self.is_eaten:
                 dx = self.start_pos.x - self.position.x
                 dy = self.start_pos.y - self.position.y
-                if abs(dx) < 0.1 and abs(dy) < 0.1:  # start position
+                if abs(dx) < 0.1 and abs(dy) < 0.1:
                     self.is_eaten = False
                     self.is_blue = False
                     return (0, 0)
@@ -68,14 +68,13 @@ class Ghost(threading.Thread):
                 new_x = self.position.x + dx
                 new_y = self.position.y + dy
                 if self.game.is_valid_move(Position(new_x, new_y)):
-                    # Avoid moving back to the previous position unless no choice
                     if (self.last_position is None or 
                         not (abs(new_x - self.last_position.x) < 0.1 and 
                              abs(new_y - self.last_position.y) < 0.1)):
                         valid_moves.append((dx, dy))
             
             if not valid_moves:
-                if self.last_position:  # If stuck, allow moving back
+                if self.last_position:
                     for dx, dy in moves:
                         new_x = self.position.x + dx
                         new_y = self.position.y + dy
@@ -85,7 +84,6 @@ class Ghost(threading.Thread):
                     return (0, 0)
             
             if self.is_blue:
-                # Run away from player
                 distances = []
                 for dx, dy in valid_moves:
                     new_x = self.position.x + dx
@@ -95,7 +93,6 @@ class Ghost(threading.Thread):
                 return max(distances, key=lambda x: x[0])[1]
             
             if self.personality == "chase":
-                # Move towards player
                 distances = []
                 for dx, dy in valid_moves:
                     new_x = self.position.x + dx
@@ -104,8 +101,7 @@ class Ghost(threading.Thread):
                     distances.append((dist, (dx, dy)))
                 return min(distances, key=lambda x: x[0])[1]
             else:
-                # Random movement towards player
-                if random.random() < 0.3:  # chance to chase
+                if random.random() < 0.3:
                     distances = []
                     for dx, dy in valid_moves:
                         new_x = self.position.x + dx
@@ -133,27 +129,22 @@ class Ghost(threading.Thread):
             if self.game.shared_state.game_over or self.game.shared_state.win:
                 break
             
-            # current position
             self.last_position = Position(self.position.x, self.position.y)
             
-            # Calculate and make move
             dx, dy = self.calculate_move()
             with self.game.shared_state.lock:
                 new_pos = Position(self.position.x + dx, self.position.y + dy)
                 if self.game.is_valid_move(new_pos):
                     self.position = new_pos
             
-            # Check collision
             self.handle_collision()
             
-            # Adjust speed based on state
             speed = self.base_speed
             if self.is_blue:
-                speed *= 1.5  # Slower blue
+                speed *= 1.5
             if self.is_eaten:
-                speed *= 0.5  # Faster returning to start
+                speed *= 0.5
             time.sleep(speed)
-            
 
 class Game:
     def __init__(self):
@@ -184,43 +175,38 @@ class Game:
 
     def create_board(self) -> List[List[str]]:
         layout = [
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-    "W............WW............W",
-    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
-    "WeWWWW.WWWWW.WW.WWWWW.WWWWeW",
-    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
-    "W..........................W",
-    "W.WWWW.WW.WWWWWWWW.WW.WWWW.W",
-    "W.WWWW.WW.WWWWWWWW.WW.WWWW.W",
-    "W......WW....WW....WW......W",
-    "WWWWWW.WWWWW WW WWWWW.WWWWWW",
-    "WWWWWW.WWWWW WW WWWWW.WWWWWW",
-    "WWWWWW.WW          WW.WWWWWW",
-    "WWWWWW.WW WWW  WWW WW.WWWWWW",
-    "WWWWWW.WW W      W WW.WWWWWW",
-    "          W      W          ",
-    "WWWWWW.WW W      W WW.WWWWWW",
-    "WWWWWW.WW WWWWWWWW WW.WWWWWW",
-    "WWWWWW.WW          WW.WWWWWW",
-    "WWWWWW.WW WWWWWWWW WW.WWWWWW",
-    "WWWWWW.WW WWWWWWWW WW.WWWWWW",
-    "W............WW............W",
-    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
-    "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
-    "We..WW................WW..eW",
-    "WWW.WW.WW.WWWWWWWW.WW.WW.WWW",
-    "WWW.WW.WW.WWWWWWWW.WW.WW.WWW",
-    "W......WW....WW....WW......W",
-    "W.WWWWWWWWWW.WW.WWWWWWWWWW.W",
-    "W.WWWWWWWWWW.WW.WWWWWWWWWW.W",
-    "W..........................W",
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"
-    ]
-    
-
-        assert len(layout) == self.BOARD_HEIGHT
-        assert all(len(row) == self.BOARD_WIDTH for row in layout)
-
+            "WWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+            "W............WW............W",
+            "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+            "WeWWWW.WWWWW.WW.WWWWW.WWWWeW",
+            "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+            "W..........................W",
+            "W.WWWW.WW.WWWWWWWW.WW.WWWW.W",
+            "W.WWWW.WW.WWWWWWWW.WW.WWWW.W",
+            "W......WW....WW....WW......W",
+            "WWWWWW.WWWWW WW WWWWW.WWWWWW",
+            "WWWWWW.WWWWW WW WWWWW.WWWWWW",
+            "WWWWWW.WW          WW.WWWWWW",
+            "WWWWWW.WW WWW  WWW WW.WWWWWW",
+            "WWWWWW.WW W      W WW.WWWWWW",
+            "          W      W          ",
+            "WWWWWW.WW W      W WW.WWWWWW",
+            "WWWWWW.WW WWWWWWWW WW.WWWWWW",
+            "WWWWWW.WW          WW.WWWWWW",
+            "WWWWWW.WW WWWWWWWW WW.WWWWWW",
+            "WWWWWW.WW WWWWWWWW WW.WWWWWW",
+            "W............WW............W",
+            "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+            "W.WWWW.WWWWW.WW.WWWWW.WWWW.W",
+            "We..WW................WW..eW",
+            "WWW.WW.WW.WWWWWWWW.WW.WW.WWW",
+            "WWW.WW.WW.WWWWWWWW.WW.WW.WWW",
+            "W......WW....WW....WW......W",
+            "W.WWWWWWWWWW.WW.WWWWWWWWWW.W",
+            "W.WWWWWWWWWW.WW.WWWWWWWWWW.W",
+            "W..........................W",
+            "WWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+        ]
         return [[cell for cell in row] for row in layout]
 
     def is_valid_move(self, pos: Position) -> bool:
@@ -229,65 +215,38 @@ class Game:
         return False
     
     def handle_player_input(self):
-        print("starting player input")
-        Player_sleep_time = .1
-        Player_can_move = True
-        Copy_game_running = True
-       
-        while Copy_game_running:
-           
+        while self.shared_state.running and not self.shared_state.game_over:
             with self.shared_state.lock:
-                Copy_game_running = not self.shared_state.game_over
-            if Player_can_move:
+                if not self.shared_state.move_queue.empty():
+                    direction = self.shared_state.move_queue.get()
                     
-                    Player_can_move = False
-                    with self.shared_state.lock:
-                        if not self.shared_state.move_queue.empty():
-                            direction = self.shared_state.move_queue.get()
-                          
-                            dx, dy = 0, 0
-                            if direction == "left": dx = -1
-                            elif direction == "right": dx = 1
-                            elif direction == "up": dy = -1
-                            elif direction == "down": dy = 1
+                    dx, dy = 0, 0
+                    if direction == "left": dx = -1
+                    elif direction == "right": dx = 1
+                    elif direction == "up": dy = -1
+                    elif direction == "down": dy = 1
 
-                            new_pos = Position(self.player_pos.x + dx, self.player_pos.y + dy)
+                    new_pos = Position(self.player_pos.x + dx, self.player_pos.y + dy)
 
-                            if self.is_valid_move(new_pos):
-                                self.player_pos = new_pos
-                                cell = self.board[new_pos.y][new_pos.x]
-                                if cell == '.':
-                                    self.shared_state.score += 10
-                                    self.board[new_pos.y][new_pos.x] = ' '
-                                elif cell == 'e':
-                                    if self.shared_state.debug:
-                                        print("Power pellet eaten!")
-                                    self.shared_state.score += 50
-                                    self.board[new_pos.y][new_pos.x] = ' '
-                                    self.shared_state.power_up_active = True
-                                    self.shared_state.power_up_timer = 150  # 5 seconds at 30 FPS
-                                    for ghost in self.ghosts:
-                                        if not ghost.is_eaten:
-                                            ghost.is_blue = True
-                                
-                                # Check collisions with ghosts after moving
-                                for ghost in self.ghosts:
-                                    if self.player_pos.collides_with(ghost.position):
-                                        if self.shared_state.power_up_active and not ghost.is_eaten:
-                                            if self.shared_state.debug:
-                                                print(f"Player ate ghost {ghost.ghost_id}!")
-                                            ghost.is_eaten = True
-                                            ghost.is_blue = False
-                                            self.shared_state.score += 200
-                                        elif not self.shared_state.power_up_active and not ghost.is_eaten:
-                                            if self.shared_state.debug:
-                                                print("Player caught by ghost!")
-                                            self.shared_state.game_over = True
-                               
-            else:
-                time.sleep(Player_sleep_time)
-                Player_can_move = True
-            
+                    if self.is_valid_move(new_pos):
+                        self.player_pos = new_pos
+                        cell = self.board[new_pos.y][new_pos.x]
+                        if cell == '.':
+                            self.shared_state.score += 10
+                            self.board[new_pos.y][new_pos.x] = ' '
+                        elif cell == 'e':
+                            if self.shared_state.debug:
+                                print("Power pellet eaten!")
+                            self.shared_state.score += 50
+                            self.board[new_pos.y][new_pos.x] = ' '
+                            self.shared_state.power_up_active = True
+                            self.shared_state.power_up_timer = 150
+                            for ghost in self.ghosts:
+                                if not ghost.is_eaten:
+                                    ghost.is_blue = True
+
+            time.sleep(0.1)  # Prevent CPU hogging
+
     def render_frame(self):
         self.screen.fill((0, 0, 0))
 
@@ -312,12 +271,10 @@ class Game:
 
         # Draw ghosts
         for ghost in self.ghosts:
-            if ghost.is_eaten:
-                color = (100, 100, 100)  # Gray when eaten
-            else:
-                color = (0, 0, 255) if ghost.is_blue else (
+            color = (100, 100, 100) if ghost.is_eaten else (
+                (0, 0, 255) if ghost.is_blue else (
                     (255, 0, 0) if ghost.personality == "chase" else (255, 182, 85)
-                )
+                ))
             pygame.draw.circle(self.screen, color,
                              (ghost.position.x * self.CELL_SIZE + self.CELL_SIZE // 2,
                               ghost.position.y * self.CELL_SIZE + self.CELL_SIZE // 2),
@@ -341,58 +298,66 @@ class Game:
 
         pygame.display.flip()
 
+    def cleanup(self):
+        self.shared_state.running = False
+        pygame.quit()
+        
+        # Join player thread with timeout
+        if self.player_thread.is_alive():
+            self.player_thread.join(timeout=1.0)
+            
+        # Join ghost threads with timeout
+        for ghost in self.ghosts:
+            if ghost.is_alive():
+                ghost.join(timeout=1.0)
+
     def start(self):
         # Start ghost threads
         for ghost in self.ghosts:
             ghost.start()
         self.player_thread.start()
-        while self.shared_state.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.shared_state.running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        self.shared_state.move_queue.put("left")
-                    elif event.key == pygame.K_RIGHT:
-                        self.shared_state.move_queue.put("right")
-                    elif event.key == pygame.K_UP:
-                        self.shared_state.move_queue.put("up")
-                    elif event.key == pygame.K_DOWN:
-                        self.shared_state.move_queue.put("down")
-                    elif event.key == pygame.K_ESCAPE:
+        
+        try:
+            while self.shared_state.running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
                         self.shared_state.running = False
+                        self.cleanup()
+                        return
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_LEFT:
+                            self.shared_state.move_queue.put("left")
+                        elif event.key == pygame.K_RIGHT:
+                            self.shared_state.move_queue.put("right")
+                        elif event.key == pygame.K_UP:
+                            self.shared_state.move_queue.put("up")
+                        elif event.key == pygame.K_DOWN:
+                            self.shared_state.move_queue.put("down")
+                        elif event.key == pygame.K_ESCAPE:
+                            self.shared_state.running = False
+                            self.cleanup()
+                            return
 
-            
-            # Update power-up timer
-            if self.shared_state.power_up_active:
-                self.shared_state.power_up_timer -= 1
-                if self.shared_state.power_up_timer <= 0:
-                    self.shared_state.power_up_active = False
-                    for ghost in self.ghosts:
-                        if not ghost.is_eaten:  # Don't un-blue if already eaten
-                            ghost.is_blue = False
+                # Update power-up timer
+                if self.shared_state.power_up_active:
+                    self.shared_state.power_up_timer -= 1
+                    if self.shared_state.power_up_timer <= 0:
+                        self.shared_state.power_up_active = False
+                        for ghost in self.ghosts:
+                            if not ghost.is_eaten:
+                                ghost.is_blue = False
 
-            # Check win condition
-            if not any('.' in row or 'e' in row for row in self.board):
-                self.shared_state.win = True
+                # Check win condition
+                if not any('.' in row or 'e' in row for row in self.board):
+                    self.shared_state.win = True
 
-            self.render_frame()
-            self.clock.tick(30)
+                self.render_frame()
+                self.clock.tick(30)
 
-        # Clean up
-        if self.shared_state.game_over:
-            try:
-                self.player_thread.join()
-                for ghost in self.ghosts:
-                    ghost.join(timeout=0.5)
-            finally:
-                pygame.quit()
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            self.cleanup()
 
 if __name__ == "__main__":
     game = Game()
-    try:
-        game.start()
-    except Exception as e:
-        print(f"Error occurred: {e}")
-    finally:
-        pygame.quit()
+    game.start()
