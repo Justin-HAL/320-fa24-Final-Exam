@@ -2,7 +2,7 @@ Multithreaded Pac-Man Game:
 
 🕹 Overview:
 
-This project implements a multithreaded version of the classic Pac-Man game using Python. Each game agent (player and ghosts) operates as an independent thread, ensuring smooth and concurrent gameplay. The game features shared memory synchronization, collision avoidance, and a real-time display powered by Pygame.
+This project implements a multithreaded version of the classic Pac-Man game using Python. Each game agent (player and ghosts) operates as an independent thread, ensuring smooth and gameplay. The game features shared memory synchronization, collision avoidance and a real-time display powered by Pygame.
 
 ✨ Features:
 
