@@ -153,6 +153,7 @@ class Ghost(threading.Thread):
             if self.is_eaten:
                 speed *= 0.5  # Faster returning to start
             time.sleep(speed)
+            
 
 class Game:
     def __init__(self):
@@ -170,9 +171,9 @@ class Game:
         self.shared_state = SharedState()
         self.player_pos = Position(x=12, y=23)
         self.player_direction = "right"
+        self.player_thread = threading.Thread(target=self.handle_player_input)
         self.ghosts = []
         self.board = self.create_board()
-
         ghost_info = [
             (Position(14, 12), "chase"),
             (Position(14, 15), "random")
@@ -226,49 +227,67 @@ class Game:
         if 0 <= pos.x < self.BOARD_WIDTH and 0 <= pos.y < self.BOARD_HEIGHT:
             return self.board[pos.y][pos.x] != 'W'
         return False
-
+    
     def handle_player_input(self):
-        while not self.shared_state.move_queue.empty():
-            direction = self.shared_state.move_queue.get()
-            dx, dy = 0, 0
-            if direction == "left": dx = -1
-            elif direction == "right": dx = 1
-            elif direction == "up": dy = -1
-            elif direction == "down": dy = 1
+        print("starting player input")
+        Player_sleep_time = .1
+        Player_can_move = True
+        Copy_game_running = True
+       
+        while Copy_game_running:
+           
+            with self.shared_state.lock:
+                Copy_game_running = not self.shared_state.game_over
+            if Player_can_move:
+                    
+                    Player_can_move = False
+                    with self.shared_state.lock:
+                        if not self.shared_state.move_queue.empty():
+                            direction = self.shared_state.move_queue.get()
+                          
+                            dx, dy = 0, 0
+                            if direction == "left": dx = -1
+                            elif direction == "right": dx = 1
+                            elif direction == "up": dy = -1
+                            elif direction == "down": dy = 1
 
-            new_pos = Position(self.player_pos.x + dx, self.player_pos.y + dy)
+                            new_pos = Position(self.player_pos.x + dx, self.player_pos.y + dy)
 
-            if self.is_valid_move(new_pos):
-                self.player_pos = new_pos
-                cell = self.board[new_pos.y][new_pos.x]
-                if cell == '.':
-                    self.shared_state.score += 10
-                    self.board[new_pos.y][new_pos.x] = ' '
-                elif cell == 'e':
-                    if self.shared_state.debug:
-                        print("Power pellet eaten!")
-                    self.shared_state.score += 50
-                    self.board[new_pos.y][new_pos.x] = ' '
-                    self.shared_state.power_up_active = True
-                    self.shared_state.power_up_timer = 150  # 5 seconds at 30 FPS
-                    for ghost in self.ghosts:
-                        if not ghost.is_eaten:
-                            ghost.is_blue = True
-                
-                # Check collisions with ghosts after moving
-                for ghost in self.ghosts:
-                    if self.player_pos.collides_with(ghost.position):
-                        if self.shared_state.power_up_active and not ghost.is_eaten:
-                            if self.shared_state.debug:
-                                print(f"Player ate ghost {ghost.ghost_id}!")
-                            ghost.is_eaten = True
-                            ghost.is_blue = False
-                            self.shared_state.score += 200
-                        elif not self.shared_state.power_up_active and not ghost.is_eaten:
-                            if self.shared_state.debug:
-                                print("Player caught by ghost!")
-                            self.shared_state.game_over = True
-
+                            if self.is_valid_move(new_pos):
+                                self.player_pos = new_pos
+                                cell = self.board[new_pos.y][new_pos.x]
+                                if cell == '.':
+                                    self.shared_state.score += 10
+                                    self.board[new_pos.y][new_pos.x] = ' '
+                                elif cell == 'e':
+                                    if self.shared_state.debug:
+                                        print("Power pellet eaten!")
+                                    self.shared_state.score += 50
+                                    self.board[new_pos.y][new_pos.x] = ' '
+                                    self.shared_state.power_up_active = True
+                                    self.shared_state.power_up_timer = 150  # 5 seconds at 30 FPS
+                                    for ghost in self.ghosts:
+                                        if not ghost.is_eaten:
+                                            ghost.is_blue = True
+                                
+                                # Check collisions with ghosts after moving
+                                for ghost in self.ghosts:
+                                    if self.player_pos.collides_with(ghost.position):
+                                        if self.shared_state.power_up_active and not ghost.is_eaten:
+                                            if self.shared_state.debug:
+                                                print(f"Player ate ghost {ghost.ghost_id}!")
+                                            ghost.is_eaten = True
+                                            ghost.is_blue = False
+                                            self.shared_state.score += 200
+                                        elif not self.shared_state.power_up_active and not ghost.is_eaten:
+                                            if self.shared_state.debug:
+                                                print("Player caught by ghost!")
+                                            self.shared_state.game_over = True
+                               
+            else:
+                time.sleep(Player_sleep_time)
+                Player_can_move = True
+            
     def render_frame(self):
         self.screen.fill((0, 0, 0))
 
@@ -326,7 +345,7 @@ class Game:
         # Start ghost threads
         for ghost in self.ghosts:
             ghost.start()
-
+        self.player_thread.start()
         while self.shared_state.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -343,8 +362,7 @@ class Game:
                     elif event.key == pygame.K_ESCAPE:
                         self.shared_state.running = False
 
-            self.handle_player_input()
-
+            
             # Update power-up timer
             if self.shared_state.power_up_active:
                 self.shared_state.power_up_timer -= 1
@@ -362,11 +380,13 @@ class Game:
             self.clock.tick(30)
 
         # Clean up
-        try:
-            for ghost in self.ghosts:
-                ghost.join(timeout=0.5)
-        finally:
-            pygame.quit()
+        if self.shared_state.game_over:
+            try:
+                self.player_thread.join()
+                for ghost in self.ghosts:
+                    ghost.join(timeout=0.5)
+            finally:
+                pygame.quit()
 
 if __name__ == "__main__":
     game = Game()
